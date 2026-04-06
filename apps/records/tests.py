@@ -139,6 +139,79 @@ class RecordAPITestCase(BaseAPITestCase):
         self.assertIn("category", response.data)
         self.assertIn("entry_date", response.data)
 
+    def test_blank_title_and_category_fail(self):
+        payload = {
+            "title": "   ",
+            "description": "Whitespace only",
+            "record_type": FinancialRecord.RecordType.EXPENSE,
+            "category": "   ",
+            "amount": "100.00",
+            "entry_date": "2026-04-03",
+        }
+
+        response = self.admin_client.post(self.list_url, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("title", response.data)
+        self.assertIn("category", response.data)
+
+    def test_future_entry_date_fails(self):
+        payload = {
+            "title": "Planned Expense",
+            "description": "Future dated",
+            "record_type": FinancialRecord.RecordType.EXPENSE,
+            "category": "Planning",
+            "amount": "100.00",
+            "entry_date": "2099-01-01",
+        }
+
+        response = self.admin_client.post(self.list_url, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("entry_date", response.data)
+
+    def test_exact_duplicate_record_fails_on_create(self):
+        payload = {
+            "title": self.income_record.title,
+            "description": self.income_record.description,
+            "record_type": self.income_record.record_type,
+            "category": self.income_record.category,
+            "amount": str(self.income_record.amount),
+            "entry_date": str(self.income_record.entry_date),
+        }
+
+        response = self.admin_client.post(self.list_url, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("non_field_errors", response.data)
+
+    def test_exact_duplicate_record_fails_on_update(self):
+        other_record = FinancialRecord.objects.create(
+            title="Freelance",
+            description="Extra income",
+            record_type=FinancialRecord.RecordType.INCOME,
+            category="Consulting",
+            amount=Decimal("900.00"),
+            entry_date=date(2026, 4, 10),
+            created_by=self.admin,
+        )
+
+        response = self.admin_client.patch(
+            reverse("record-detail", args=[other_record.id]),
+            {
+                "title": self.income_record.title,
+                "description": self.income_record.description,
+                "record_type": self.income_record.record_type,
+                "category": self.income_record.category,
+                "amount": str(self.income_record.amount),
+                "entry_date": str(self.income_record.entry_date),
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("non_field_errors", response.data)
+
     def test_unauthenticated_requests_are_blocked(self):
         response = self.unauthenticated_client.get(self.list_url)
 
