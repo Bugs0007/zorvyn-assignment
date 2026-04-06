@@ -7,6 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-change-me"
 DEBUG = True
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
+ALLOW_PUBLIC_USER_CREATION = os.environ.get("ALLOW_PUBLIC_USER_CREATION", "False").lower() == "true"
 
 INSTALLED_APPS = [
     "django.contrib.admin",

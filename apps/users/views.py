@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework import permissions, viewsets
 from rest_framework import status
 from rest_framework.authtoken.models import Token
@@ -15,6 +16,11 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by("username")
     serializer_class = UserSerializer
     permission_classes = [AdminOnlyPermission]
+
+    def get_permissions(self):
+        if self.action == "create" and settings.ALLOW_PUBLIC_USER_CREATION:
+            return [permissions.AllowAny()]
+        return [permission() for permission in self.permission_classes]
 
     @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated])
     def me(self, request):

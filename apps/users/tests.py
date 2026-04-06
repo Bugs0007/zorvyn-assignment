@@ -1,3 +1,4 @@
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework.authtoken.models import Token
 from rest_framework import status
@@ -42,6 +43,23 @@ class UserAPITestCase(BaseAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("token", response.data)
         self.assertEqual(response.data["user"]["username"], "admin")
+
+    @override_settings(ALLOW_PUBLIC_USER_CREATION=True)
+    def test_unauthenticated_user_can_create_user_when_public_creation_enabled(self):
+        response = self.unauthenticated_client.post(
+            self.list_url,
+            {
+                "username": "bootstrap_admin",
+                "password": "strongpass123",
+                "email": "bootstrap@example.com",
+                "role": "ADMIN",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        created_user = self.admin.__class__.objects.get(username="bootstrap_admin")
+        self.assertTrue(created_user.check_password("strongpass123"))
 
     def test_admin_created_user_password_is_hashed(self):
         response = self.admin_client.post(
